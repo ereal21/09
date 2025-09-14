@@ -51,6 +51,7 @@ def config_keyboard(lang: str, setup_done: bool):
         kb.add(InlineKeyboardButton(T[lang]["config_rdp"], callback_data="config:rdp"))
     else:
         kb.add(InlineKeyboardButton(T[lang]["config_setup"], callback_data="config:setup"))
+    kb.add(InlineKeyboardButton(T[lang]["config_bot"], callback_data="config:bot"))
     kb.add(
         InlineKeyboardButton(
             T[lang]["config_support"], url=f"https://t.me/{SUPPORT_USERNAME}"
@@ -58,6 +59,48 @@ def config_keyboard(lang: str, setup_done: bool):
     )
     kb.add(InlineKeyboardButton(T[lang]["back"], callback_data="back"))
     return kb
+
+
+def bot_keyboard(lang: str):
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(InlineKeyboardButton(T[lang]["bot_functions"], callback_data="bot:functions"))
+    kb.add(InlineKeyboardButton(T[lang]["back"], callback_data="back"))
+    return kb
+
+
+def functions_keyboard(lang: str):
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        InlineKeyboardButton(T[lang]["functions_add"], callback_data="functions:add"),
+        InlineKeyboardButton(T[lang]["functions_remove"], callback_data="functions:remove"),
+        InlineKeyboardButton(T[lang]["functions_view"], callback_data="functions:view"),
+        InlineKeyboardButton(T[lang]["functions_request"], callback_data="functions:request"),
+    )
+    kb.add(InlineKeyboardButton(T[lang]["back"], callback_data="back"))
+    return kb
+
+
+def available_functions_keyboard(lang: str, funcs: List[Tuple[int, str]]):
+    kb = InlineKeyboardMarkup(row_width=1)
+    for fid, name in funcs:
+        kb.add(InlineKeyboardButton(name, callback_data=f"functions:add:{fid}"))
+    kb.add(InlineKeyboardButton(T[lang]["back"], callback_data="back"))
+    return kb
+
+
+def user_functions_keyboard(lang: str, funcs: List[Tuple[int, str]]):
+    kb = InlineKeyboardMarkup(row_width=1)
+    for fid, name in funcs:
+        kb.add(InlineKeyboardButton(name, callback_data=f"functions:remove:{fid}"))
+    kb.add(InlineKeyboardButton(T[lang]["back"], callback_data="back"))
+    return kb
+
+
+def confirm_remove_keyboard(lang: str, func_id: int):
+    return InlineKeyboardMarkup(row_width=2).add(
+        InlineKeyboardButton(T[lang]["yes"], callback_data=f"functions:remove:confirm:{func_id}"),
+        InlineKeyboardButton(T[lang]["cancel"], callback_data="functions:remove"),
+    )
 
 
 def setup_next_keyboard(lang: str, next_cb: str):

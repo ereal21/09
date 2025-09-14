@@ -70,6 +70,23 @@ class Database:
                 )
                 """
             )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS functions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_functions (
+                    user_id INTEGER,
+                    function_id INTEGER,
+                    PRIMARY KEY (user_id, function_id)
+                )
+                """
+            )
             con.commit()
 
     def upsert_user(self, user_id: int, username: Optional[str], language: Optional[str] = None):
@@ -256,4 +273,48 @@ class Database:
             cur = con.cursor()
             cur.execute("SELECT user_id, username FROM users WHERE setup_done=1")
             return cur.fetchall()
+
+    def get_all_functions(self):
+        with sqlite3.connect(self.path) as con:
+            cur = con.cursor()
+            cur.execute("SELECT id, name FROM functions ORDER BY id")
+            return cur.fetchall()
+
+    def get_user_functions(self, user_id: int):
+        with sqlite3.connect(self.path) as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                SELECT f.id, f.name FROM user_functions uf
+                JOIN functions f ON uf.function_id = f.id
+                WHERE uf.user_id=? ORDER BY f.id
+                """,
+                (user_id,),
+            )
+            return cur.fetchall()
+
+    def add_user_function(self, user_id: int, function_id: int):
+        with sqlite3.connect(self.path) as con:
+            cur = con.cursor()
+            cur.execute(
+                "INSERT OR IGNORE INTO user_functions (user_id, function_id) VALUES (?, ?)",
+                (user_id, function_id),
+            )
+            con.commit()
+
+    def remove_user_function(self, user_id: int, function_id: int):
+        with sqlite3.connect(self.path) as con:
+            cur = con.cursor()
+            cur.execute(
+                "DELETE FROM user_functions WHERE user_id=? AND function_id=?",
+                (user_id, function_id),
+            )
+            con.commit()
+
+    def get_function_name(self, function_id: int) -> str:
+        with sqlite3.connect(self.path) as con:
+            cur = con.cursor()
+            cur.execute("SELECT name FROM functions WHERE id=?", (function_id,))
+            row = cur.fetchone()
+            return row[0] if row else ""
 

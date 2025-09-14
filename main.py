@@ -36,6 +36,11 @@ from keyboards import (
     admin_panel_keyboard,
     user_profile_keyboard,
     config_keyboard,
+    bot_keyboard,
+    functions_keyboard,
+    available_functions_keyboard,
+    user_functions_keyboard,
+    confirm_remove_keyboard,
     rdp_keyboard,
     setup_next_keyboard,
     setup_cancel_keyboard,
@@ -206,6 +211,102 @@ async def cb_config_rdp(call: types.CallbackQuery):
         await call.message.edit_text(
             T[lang]["rdp_choose_package"], reply_markup=rdp_keyboard(lang)
         )
+
+
+@dp.callback_query_handler(lambda c: c.data == "config:bot")
+async def cb_config_bot(call: types.CallbackQuery):
+    lang = db.get_language(call.from_user.id)
+    history[call.from_user.id].append((call.message.text or "", call.message.reply_markup))
+    await call.message.edit_text(T[lang]["bot_title"], reply_markup=bot_keyboard(lang))
+
+
+@dp.callback_query_handler(lambda c: c.data == "bot:functions")
+async def cb_bot_functions(call: types.CallbackQuery):
+    lang = db.get_language(call.from_user.id)
+    history[call.from_user.id].append((call.message.text or "", call.message.reply_markup))
+    await call.message.edit_text(T[lang]["functions_title"], reply_markup=functions_keyboard(lang))
+
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith("functions:"))
+async def cb_functions(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    lang = db.get_language(user_id)
+    parts = call.data.split(":")
+    action = parts[1]
+
+    if action == "add":
+        if len(parts) == 2:
+            history[user_id].append((call.message.text or "", call.message.reply_markup))
+            all_funcs = db.get_all_functions()
+            owned = {fid for fid, _ in db.get_user_functions(user_id)}
+            available = [f for f in all_funcs if f[0] not in owned]
+            if not available:
+                await call.message.edit_text(
+                    T[lang]["functions_no_available"], reply_markup=back_to_menu(lang)
+                )
+            else:
+                await call.message.edit_text(
+                    T[lang]["functions_select_add"],
+                    reply_markup=available_functions_keyboard(lang, available),
+                )
+        else:
+            func_id = int(parts[2])
+            name = db.get_function_name(func_id)
+            db.add_user_function(user_id, func_id)
+            history[user_id].append((call.message.text or "", call.message.reply_markup))
+            await call.message.edit_text(
+                T[lang]["functions_added"].format(name=name),
+                reply_markup=functions_keyboard(lang),
+            )
+
+    elif action == "remove":
+        if len(parts) == 2:
+            history[user_id].append((call.message.text or "", call.message.reply_markup))
+            funcs = db.get_user_functions(user_id)
+            if not funcs:
+                await call.message.edit_text(
+                    T[lang]["functions_no_active"], reply_markup=back_to_menu(lang)
+                )
+            else:
+                await call.message.edit_text(
+                    T[lang]["functions_select_remove"],
+                    reply_markup=user_functions_keyboard(lang, funcs),
+                )
+        elif len(parts) >= 3 and parts[2] == "confirm":
+            func_id = int(parts[3])
+            name = db.get_function_name(func_id)
+            db.remove_user_function(user_id, func_id)
+            history[user_id].append((call.message.text or "", call.message.reply_markup))
+            await call.message.edit_text(
+                T[lang]["functions_removed"].format(name=name),
+                reply_markup=functions_keyboard(lang),
+            )
+        else:
+            func_id = int(parts[2])
+            name = db.get_function_name(func_id)
+            history[user_id].append((call.message.text or "", call.message.reply_markup))
+            await call.message.edit_text(
+                T[lang]["functions_confirm_remove"].format(name=name),
+                reply_markup=confirm_remove_keyboard(lang, func_id),
+            )
+
+    elif action == "view":
+        history[user_id].append((call.message.text or "", call.message.reply_markup))
+        funcs = db.get_user_functions(user_id)
+        if not funcs:
+            await call.message.edit_text(
+                T[lang]["functions_no_active"], reply_markup=back_to_menu(lang)
+            )
+        else:
+            list_text = "\n".join(f"• {name}" for _, name in funcs)
+            await call.message.edit_text(
+                T[lang]["functions_active_list"].format(functions=list_text),
+                reply_markup=back_to_menu(lang),
+            )
+
+    else:
+        history[user_id].append((call.message.text or "", call.message.reply_markup))
+        await call.message.edit_text(T[lang]["coming_soon"], reply_markup=back_to_menu(lang))
 
 
 @dp.callback_query_handler(lambda c: c.data == "rdp:extend")
